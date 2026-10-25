@@ -3,7 +3,7 @@
 Package management for small multifamily properties.
 MIS 4500 — Bryan Albert, Jennifer Moon, Nicholas Bernier.
 
-Django 6.1 · PostgreSQL (Neon) · Bootstrap 5 · hosted on Render.
+Django 6.1 · SQLite · Bootstrap 5 · hosted on Render.
 
 ---
 
@@ -20,8 +20,7 @@ python manage.py runserver
 
 Open http://127.0.0.1:8000/
 
-With no `DATABASE_URL` set, it uses a local SQLite file. Set
-`DATABASE_URL` to the Neon connection string to use Postgres.
+It uses a local SQLite file, `db.sqlite3`, which `migrate` creates.
 
 ### Demo logins
 
@@ -61,16 +60,19 @@ until those views exist.
 
 ## Design decisions worth knowing
 
-**The custody log is append-only.** `CustodyLog.save()` raises an error
-on an existing row and `delete()` raises on any row. A correction is a
-new `CORRECTION` entry, the way a ledger records a correcting entry.
-The Django admin shows the log read-only for everyone, superusers
-included — that is the Milestone 3 rule that no role may edit a custody
-record.
+**The custody log is append-only at the application level.**
+`CustodyLog.save()` raises an error on an existing row and `delete()`
+raises on any row. A correction is a new `CORRECTION` entry, the way a
+ledger records a correcting entry. The Django admin shows the log
+read-only for everyone, superusers included — that is the Milestone 3
+rule that no role may edit a custody record.
 
-A bulk queryset delete still bypasses the guard, which is how
-`seed_demo` resets demo data. The protection is at the application
-layer; enforcing it in the database would need a trigger.
+This is an application rule, not a storage guarantee. A bulk queryset
+delete still bypasses the guard, which is how `seed_demo` resets demo
+data, and enforcing it in the database would need a trigger. On the
+deployed demonstration the database itself is ephemeral (see
+[Database](#database) below), so the log is not a permanent record
+there.
 
 **`days_held()` is calculated, not stored.** It reads `logged_at` when
 called, which is why no background job is needed to age packages.
@@ -90,7 +92,6 @@ called, which is why no background job is needed to age packages.
    | Variable | Value |
    |---|---|
    | `SECRET_KEY` | a fresh key, see below |
-   | `DATABASE_URL` | the Neon connection string |
    | `DEBUG` | `False` |
    | `ALLOWED_HOSTS` | the Render hostname, e.g. `parceldesk.onrender.com` |
 
@@ -104,12 +105,20 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 in the first push and is in the git history, so it must not be used in
 production. The new key goes in Render's dashboard only.
 
-`build.sh` runs migrations at deploy time. Run `seed_demo` once from
-the Render shell after the first deploy if the demo needs data.
+`build.sh` runs migrations and `seed_demo` at deploy time, so every
+deploy starts from fresh demo data.
+
+### Database
+
+The deployed demonstration uses SQLite on the application host,
+reseeded by `build.sh` on every deploy. Render's free plan has no
+persistent disk, so records created at runtime do not survive a restart
+or a sleep cycle. This is adequate for demonstrating the workflow and is
+not adequate for production. A managed PostgreSQL database or a paid
+persistent disk is a prerequisite for any real deployment.
 
 ### Free tier limits
 
 - The web service sleeps after 15 minutes idle and takes about a minute
-  to wake. Load the page a few minutes before any demonstration.
-- Neon's free database does not expire, but it is capped at 0.5 GB of
-  storage and 100 compute-hours per month.
+  to wake. Load the page a few minutes before any demonstration. Waking
+  restores the seeded data; anything created before the sleep is gone.
