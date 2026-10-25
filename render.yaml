@@ -1,6 +1,6 @@
 # Render deployment config.
-# Jennifer: set DATABASE_URL and SECRET_KEY in the Render dashboard,
-# not here. ALLOWED_HOSTS must match the app's live hostname.
+# Set SECRET_KEY and ALLOWED_HOSTS in the Render dashboard.
+# No DATABASE_URL — the app uses SQLite, reseeded on each deploy.
 services:
   - type: web
     name: parceldesk
@@ -14,8 +14,6 @@ services:
       - key: PYTHON_VERSION
         value: "3.13.0"
       - key: SECRET_KEY
-        sync: false
-      - key: DATABASE_URL
         sync: false
       - key: ALLOWED_HOSTS
         sync: false
