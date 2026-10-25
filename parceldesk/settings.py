@@ -10,22 +10,45 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load a local .env file if one exists, so secrets stay out of the repo.
+_env_file = BASE_DIR / ".env"
+if _env_file.exists():
+    for _line in _env_file.read_text().splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _key, _value = _line.split("=", 1)
+            os.environ.setdefault(_key.strip(), _value.strip())
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&!%)jy2)m6giysiu&&okyr*s*lxy2!b9@+&%kd+psn3ijwp_lc'
+# SECURITY: the key, debug flag and allowed hosts all come from the
+# environment. The fallbacks below are for local development only and
+# are never used in production, where Render supplies real values.
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY", "django-insecure-local-development-key-do-not-deploy"
+)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if h.strip()
+]
+
+# Django's test client sends the host "testserver". Allow it in
+# development so tests and manage.py shell checks work.
+if DEBUG and "testserver" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("testserver")
+
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{h}" for h in ALLOWED_HOSTS if h not in ("localhost", "127.0.0.1")
+]
 
 
 # Application definition
@@ -37,10 +60,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'packages',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -72,30 +97,36 @@ WSGI_APPLICATION = 'parceldesk.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Database. Uses DATABASE_URL (Neon in production) when set,
+# otherwise a local SQLite file so the project runs with no setup.
+_database_url = os.environ.get("DATABASE_URL")
+if _database_url:
+    import dj_database_url
+    DATABASES = {
+        "default": dj_database_url.parse(
+            _database_url, conn_max_age=600, ssl_require=True
+        )
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 
+# Password rules follow NIST SP 800-63B (Milestone 3, Section 1.2).
+# MFA is deferred, so passwords are single-factor and require 15
+# characters. NIST advises against composition rules, so none are set.
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+     "OPTIONS": {"min_length": 15}},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
 ]
 
 
@@ -125,3 +156,44 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+
+# --- ParcelDesk settings ---------------------------------------------
+
+# Session handling (Milestone 3, Section 1.3).
+# Per-role timeouts (staff 15 min, residents 60 min) are applied at
+# login in packages/signals.py, because this setting is global.
+SESSION_COOKIE_AGE = 60 * 60
+SESSION_SAVE_EVERY_REQUEST = True       # timeout is inactivity, not total time
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+
+# Login routing
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
+
+# Email. Django 6.1 configures this through MAILERS above, which already
+# defaults to the console backend: it writes the message to the log
+# instead of sending it. That is enough to show a notification fires with
+# the right content and recipient. To send for real in Sprint 3, change
+# the BACKEND in MAILERS to the SMTP backend and add the host settings
+# there. Do not add EMAIL_BACKEND; Django rejects it when MAILERS is set.
+DEFAULT_FROM_EMAIL = "parceldesk@example.com"
+
+# Static files for deployment
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
+
+# Production hardening. Only applied when DEBUG is off, so local
+# development is unaffected.
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_HSTS_SECONDS = 3600

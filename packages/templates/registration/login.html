@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In | ParcelDesk{% endblock %}
+
+{% block content %}
+    <h1>Sign In</h1>
+    <p>Please enter your login credentials</p>
+
+    {% if form.errors %}
+        <div class="alert alert-danger">That username and password did not match.</div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label class="form-label" for="id_username">Username</label>
+            <input type="text" name="username" id="id_username" class="form-control" autofocus required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="id_password">Password</label>
+            <input type="password" name="password" id="id_password" class="form-control" required>
+        </div>
+
+        <button class="btn btn-primary">Login</button>
+    </form>
+{% endblock %}

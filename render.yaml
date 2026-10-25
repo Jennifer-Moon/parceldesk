@@ -1,0 +1,21 @@
+# Render deployment config.
+# Jennifer: set DATABASE_URL and SECRET_KEY in the Render dashboard,
+# not here. ALLOWED_HOSTS must match the app's live hostname.
+services:
+  - type: web
+    name: parceldesk
+    runtime: python
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn parceldesk.wsgi:application"
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false

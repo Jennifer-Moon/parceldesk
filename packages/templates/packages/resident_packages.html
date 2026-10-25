@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Your Packages | ParcelDesk{% endblock %}
+
+{% block content %}
+    <h1>Your Packages</h1>
+
+    {% if packages %}
+        <p>Below are the packages currently waiting for pickup at the leasing office:</p>
+
+        {% for package in packages %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Arrived {{ package.days_held }} day{{ package.days_held|pluralize }} ago</h5>
+                    <p class="card-text">
+                        <strong>Carrier:</strong> {{ package.carrier }}<br>
+                        <strong>Tracking Number:</strong> {{ package.tracking_number }}<br>
+                        <strong>Description:</strong> {{ package.description|default:"Not recorded" }}<br>
+                        <strong>Pickup Location:</strong> Leasing office, package room
+                    </p>
+                </div>
+            </div>
+        {% endfor %}
+
+        <p class="text-muted">Office hours: Monday to Friday, 9:00 AM to 6:00 PM.</p>
+    {% else %}
+        <p>You have no packages waiting for pickup.</p>
+    {% endif %}
+{% endblock %}

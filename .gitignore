@@ -10,6 +10,10 @@ venv/
 .env/
 .venv/
 
+# Secrets - never commit these
+.env
+.env.local
+
 # Django stuff
 *.log
 *.pot
