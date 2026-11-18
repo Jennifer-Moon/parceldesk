@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Package List | ParcelDesk{% endblock %}
+
+{% block content %}
+    <h1>{{ property.name }} Packages Awaiting Pickup</h1>
+
+    {% if packages %}
+        <p>
+            Packages are shown oldest first. Items held seven or more
+            days are highlighted.
+        </p>
+
+        {% for package in packages %}
+            <div class="card mb-3 {% if package.is_aged %}border-danger{% endif %}">
+                <div class="card-body">
+
+                    {% if package.is_aged %}
+                        <span class="badge bg-danger mb-2">
+                            Aged Package
+                        </span>
+                    {% endif %}
+
+                    <p class="card-text">
+                        <strong>Resident:</strong>
+                        {{ package.resident.full_name }}<br>
+
+                        <strong>Building/Unit:</strong>
+                        {{ package.resident.building }}/{{ package.resident.unit }}<br>
+
+                        <strong>Carrier:</strong>
+                        {{ package.carrier }}<br>
+
+                        <strong>Tracking Number:</strong>
+                        {{ package.tracking_number }}<br>
+
+                        <strong>Description:</strong>
+                        {{ package.description|default:"Not recorded" }}<br>
+
+                        <strong>Days Held:</strong>
+                        {{ package.days_held }}
+                    </p>
+
+                </div>
+            </div>
+        {% endfor %}
+
+    {% else %}
+        <p>No packages are currently awaiting pickup.</p>
+    {% endif %}
+
+    <a href="{% url 'staff_dashboard' %}"
+       class="btn btn-secondary">
+       Back to Dashboard
+    </a>
+
+{% endblock %}
