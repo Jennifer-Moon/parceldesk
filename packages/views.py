@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
-
+from packages.models import Package
 
 def home(request):
     """
@@ -37,4 +37,25 @@ def resident_packages(request):
         request,
         "packages/resident_packages.html",
         {"packages": packages, "resident": resident},
+    )
+
+@login_required
+def package_list(request):
+    staff_profile = request.user.staffprofile
+
+    packages = (
+        Package.objects.filter(
+            resident__property=staff_profile.property,
+            status=Package.STATUS_HELD,
+        )
+        .order_by("logged_at")
+    )
+
+    return render(
+        request,
+        "packages/package_list.html",
+        {
+            "packages": packages,
+            "property": staff_profile.property,
+        },
     )
