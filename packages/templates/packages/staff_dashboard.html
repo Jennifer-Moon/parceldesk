@@ -6,13 +6,19 @@
     <h1>Staff Dashboard</h1>
     <p>Select an action</p>
 
-    {# Sprint 2 builds these views. Links are disabled until then. #}
     <a href="{% url 'package_list' %}" class="btn btn-primary mb-3">View All Packages</a><br>
-    <a class="btn btn-primary mb-3 disabled" aria-disabled="true">Intake New Package</a><br>
-    <a class="btn btn-primary mb-3 disabled" aria-disabled="true">Mark Package as Picked Up</a>
+
+    {# Intake and pickup are not built yet. Greyed out so the gap is obvious. #}
+    <a class="btn btn-outline-secondary mb-3 disabled" aria-disabled="true">
+        Intake New Package &mdash; not built yet
+    </a><br>
+
+    <a class="btn btn-outline-secondary mb-3 disabled" aria-disabled="true">
+        Mark Package as Picked Up &mdash; not built yet
+    </a>
 
     <p class="text-muted mt-4">
-        Package records are visible in the
-        <a href="/admin/packages/package/">admin</a> until Sprint 2 builds these screens.
+        Until those two screens are built, packages are logged and marked
+        collected through the <a href="/admin/packages/package/">admin</a>.
     </p>
 {% endblock %}
