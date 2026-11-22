@@ -41,7 +41,9 @@ def resident_packages(request):
 
 @login_required
 def package_list(request):
-    staff_profile = request.user.staffprofile
+    staff_profile = getattr(request.user, "staffprofile", None)
+    if staff_profile is None:
+        return redirect("home")
 
     packages = (
         Package.objects.filter(
